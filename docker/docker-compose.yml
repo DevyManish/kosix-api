@@ -1,7 +1,7 @@
 version: "3.9"
 name: "kosix"
 services:
-  postgres:
+  db:
     container_name: kosix-postgres
     image: postgres:15
     restart: unless-stopped
