@@ -11,3 +11,8 @@ wheels/
 
 data/
 .env
+docs/
+
+# Alembic
+alembic/__pycache__/
+alembic/versions/__pycache__/
