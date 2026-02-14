@@ -41,6 +41,19 @@ from app.schemas.upload import (
     FileUploadUpdate,
     FileUploadResponse,
 )
+from app.schemas.data_source import (
+    DataSourceType,
+    DataSourceStatus,
+    BaseDataSourceConfig,
+    PostgreSQLConfig,
+    MySQLConfig,
+    OracleConfig,
+    DataSourceBase,
+    DataSourceCreate,
+    DataSourceUpdate,
+    DataSourceResponse,
+    DataSourceListItem,
+)
 
 __all__ = [
     # Account schemas
@@ -81,4 +94,16 @@ __all__ = [
     "FileUploadCreate",
     "FileUploadUpdate",
     "FileUploadResponse",
+    # Data Source schemas
+    "DataSourceType",
+    "DataSourceStatus",
+    "BaseDataSourceConfig",
+    "PostgreSQLConfig",
+    "MySQLConfig",
+    "OracleConfig",
+    "DataSourceBase",
+    "DataSourceCreate",
+    "DataSourceUpdate",
+    "DataSourceResponse",
+    "DataSourceListItem",
 ]
