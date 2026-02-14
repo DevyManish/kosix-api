@@ -1,9 +1,19 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from urllib.parse import quote_plus
 import os
+import logging
 from dotenv import load_dotenv
 
-load_dotenv()
+# Configure logger
+logger = logging.getLogger(__name__)
+
+# Check if .env file exists and load it
+env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
+if not os.path.exists(env_path):
+    logger.error(f".env file not found at {env_path}. Please create one with required environment variables.")
+    raise FileNotFoundError(f".env file not found at {env_path}")
+
+load_dotenv(env_path)
 
 
 class Settings(BaseSettings):
