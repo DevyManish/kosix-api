@@ -77,3 +77,14 @@ class AuthResponse(BaseModel):
     """Schema for authentication response."""
     account: AccountResponse
     tokens: TokenResponse
+
+
+class VerifyOTPRequest(BaseModel):
+    """Schema for OTP verification request."""
+    email: EmailStr
+    otp: str = Field(..., min_length=6, max_length=6)
+
+
+class ResendOTPRequest(BaseModel):
+    """Schema for resending OTP request."""
+    email: EmailStr

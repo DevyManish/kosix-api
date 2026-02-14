@@ -11,6 +11,8 @@ from app.schemas.auth import (
     AuthResponse,
     TokenResponse,
     AccountResponse,
+    VerifyOTPRequest,
+    ResendOTPRequest,
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -130,3 +132,30 @@ def change_password(
     account = AuthController.get_current_user(db, token)
     
     return AuthController.change_password(db, account, request)
+
+
+@router.post("/verify-email")
+def verify_email(
+    request: VerifyOTPRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Verify user's email address using OTP.
+    
+    - **email**: User's email address
+    - **otp**: 6-digit OTP code sent to email
+    """
+    return AuthController.verify_email(db, request)
+
+
+@router.post("/resend-otp")
+def resend_otp(
+    request: ResendOTPRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Resend OTP for email verification.
+    
+    - **email**: User's email address to resend OTP to
+    """
+    return AuthController.resend_otp(db, request)

@@ -10,6 +10,8 @@ from app.core.config import settings
 from app.core.logger import get_logger
 from app.models.account import Account, AuthProvider
 from app.models.session import Session as SessionModel
+from app.models.otp import OTP
+from app.utils.email_sender import email_sender
 from app.schemas.auth import (
     LoginRequest,
     RegisterRequest,
@@ -18,6 +20,8 @@ from app.schemas.auth import (
     AuthResponse,
     RefreshTokenRequest,
     PasswordChangeRequest,
+    VerifyOTPRequest,
+    ResendOTPRequest,
 )
 
 logger = get_logger(__name__)
@@ -144,6 +148,15 @@ class AuthController:
         db.refresh(account)
 
         logger.info(f"Successfully registered user: {account.id}")
+
+        # Generate and send OTP for email verification
+        otp = OTP.generate_otp(account.id, account.email)
+        db.add(otp)
+        db.commit()
+
+        # Send OTP email
+        email_sender.send_otp_email(to_email=account.email, otp_code=otp.otp_code)
+        logger.info(f"OTP email sent to {account.email}")
 
         # Create tokens
         tokens = AuthController.create_tokens(account.id)
@@ -348,6 +361,90 @@ class AuthController:
         logger.info(f"Successfully changed password for user: {account.id}")
 
         return {"message": "Password changed successfully"}
+
+
+    @staticmethod
+    def verify_email(db: Session, request: VerifyOTPRequest) -> dict:
+        """Verify email using OTP."""
+        logger.info(f"Email verification attempt for: {request.email}")
+
+        # Find the account
+        account = db.query(Account).filter(Account.email == request.email).first()
+        if not account:
+            logger.warning(f"Verification failed: Account not found for email {request.email}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Account not found"
+            )
+
+        # Check if already verified
+        if account.email_verified:
+            return {"message": "Email already verified"}
+
+        # Find the most recent valid OTP for this account
+        otp = db.query(OTP).filter(
+            OTP.account_id == account.id,
+            OTP.email == request.email,
+            OTP.otp_code == request.otp,
+            OTP.is_used == False
+        ).order_by(OTP.created_at.desc()).first()
+
+        if not otp:
+            logger.warning(f"Verification failed: Invalid OTP for {request.email}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid OTP"
+            )
+
+        if not otp.is_valid():
+            logger.warning(f"Verification failed: Expired OTP for {request.email}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="OTP has expired. Please request a new one."
+            )
+
+        # Mark OTP as used and verify email
+        otp.is_used = True
+        account.email_verified = True
+        db.commit()
+
+        logger.info(f"Email verified successfully for user: {account.id}")
+        return {"message": "Email verified successfully"}
+
+    @staticmethod
+    def resend_otp(db: Session, request: ResendOTPRequest) -> dict:
+        """Resend OTP for email verification."""
+        logger.info(f"Resend OTP request for: {request.email}")
+
+        # Find the account
+        account = db.query(Account).filter(Account.email == request.email).first()
+        if not account:
+            logger.warning(f"Resend OTP failed: Account not found for email {request.email}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Account not found"
+            )
+
+        # Check if already verified
+        if account.email_verified:
+            return {"message": "Email already verified"}
+
+        # Invalidate any existing unused OTPs
+        db.query(OTP).filter(
+            OTP.account_id == account.id,
+            OTP.is_used == False
+        ).update({"is_used": True})
+
+        # Generate and send new OTP
+        otp = OTP.generate_otp(account.id, account.email)
+        db.add(otp)
+        db.commit()
+
+        # Send OTP email
+        email_sender.send_otp_email(to_email=account.email, otp_code=otp.otp_code)
+        logger.info(f"New OTP sent to {account.email}")
+
+        return {"message": "OTP sent successfully"}
 
 
 # Create a dependency for getting current user
